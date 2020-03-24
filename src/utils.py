@@ -127,6 +127,26 @@ def get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='train', filter
 
     return idx_im_ret, idx_sk_ret
 
+def make_split(data,classes,tr_classes):
+    class_wise_dict={}
+    for path in data:
+        if path.split('/')[0] not in class_wise_dict.keys():
+            class_wise_dict[path.split('/')[0]]=[path]
+        else:
+            class_wise_dict[path.split('/')[0]].append(path)
+    train,test=[],[]
+    for class_name in class_wise_dict.keys():
+        if class_name in tr_classes:
+            split_index=int(0.1*len(class_wise_dict[class_name]))
+            if split_index == 0:
+                train.extend(class_wise_dict[class_name])
+                test.extend(class_wise_dict[class_name])
+            else:
+                train.extend(class_wise_dict[class_name][split_index:])
+                test.extend(class_wise_dict[class_name][:split_index])
+        else:
+            test.extend(class_wise_dict[class_name])
+    return np.array(train), np.array(test)
 
 def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=False, photo_dir='photo',
                                 sketch_dir='sketch', photo_sd='tx_000000000000', sketch_sd='tx_000000000000'):
@@ -142,38 +162,41 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
 
     # all the image and sketch files together with classes and core names
     fls_sk = np.array(['/'.join(f.split('/')[-2:]) for f in glob.glob(os.path.join(path_sk, '*/*.png'))])
-    fls_im = np.array(['/'.join(f.split('/')[-2:]) for f in glob.glob(os.path.join(path_im, '*/*.jpg'))])
-
-    # classes for image and sketch
-    clss_sk = np.array([f.split('/')[0] for f in fls_sk])
-    clss_im = np.array([f.split('/')[0] for f in fls_im])
-
+    fls_tr_sk, fls_te_sk = make_split(fls_sk,classes,tr_classes)
+    clss_tr_sk = np.array([f.split('/')[-2] for f in fls_tr_sk])
+    clss_te_sk = np.array([f.split('/')[-2] for f in fls_te_sk])
+    
+    fls_im = np.array(['/'.join(f.split('/')[-2:]) for f in glob.glob(os.path.join(path_im, '*/*.jpg'))])    
+    fls_tr_im, fls_te_im = make_split(fls_im,classes,tr_classes)
+    clss_tr_im = np.array([f.split('/')[-2] for f in fls_tr_im])
+    clss_te_im = np.array([f.split('/')[-2] for f in fls_te_im])
+    
     
 
-    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train',
+    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_tr_im, fls_tr_sk, set_type='train',
                                                       filter_sketch=filter_sketch)
     #idx_va_im, idx_va_sk = get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='valid',
     #                                                  filter_sketch=filter_sketch)
-    idx_te_im, idx_te_sk = get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='test',
+    idx_te_im, idx_te_sk = get_coarse_grained_samples(classes, fls_te_im, fls_te_sk, set_type='test',
                                                       filter_sketch=filter_sketch)
 
     splits = dict()
 
-    splits['tr_fls_sk'] = fls_sk[idx_tr_sk]
-    splits['va_fls_sk'] = fls_sk[idx_te_sk]
-    splits['te_fls_sk'] = fls_sk[idx_te_sk]
+    splits['tr_fls_sk'] = fls_tr_sk[idx_tr_sk]
+    #splits['va_fls_sk'] = fls_sk[idx_te_sk]
+    splits['te_fls_sk'] = fls_te_sk[idx_te_sk]
 
-    splits['tr_clss_sk'] = clss_sk[idx_tr_sk]
-    splits['va_clss_sk'] = clss_sk[idx_te_sk]
-    splits['te_clss_sk'] = clss_sk[idx_te_sk]
+    splits['tr_clss_sk'] = clss_tr_sk[idx_tr_sk]
+    #splits['va_clss_sk'] = clss_sk[idx_te_sk]
+    splits['te_clss_sk'] = clss_te_sk[idx_te_sk]
 
-    splits['tr_fls_im'] = fls_im[idx_tr_im]
-    splits['va_fls_im'] = fls_im[idx_te_im]
-    splits['te_fls_im'] = fls_im[idx_te_im]
+    splits['tr_fls_im'] = fls_tr_im[idx_tr_im]
+    #splits['va_fls_im'] = fls_im[idx_te_im]
+    splits['te_fls_im'] = fls_te_im[idx_te_im]
 
-    splits['tr_clss_im'] = clss_im[idx_tr_im]
-    splits['va_clss_im'] = clss_im[idx_te_im]
-    splits['te_clss_im'] = clss_im[idx_te_im]
+    splits['tr_clss_im'] = clss_tr_im[idx_tr_im]
+    #splits['va_clss_im'] = clss_im[idx_te_im]
+    splits['te_clss_im'] = clss_te_im[idx_te_im]
 
     return splits
 
@@ -191,36 +214,40 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
     # image files and classes
     fls_im = glob.glob(os.path.join(path_im, '*', '*.jpg'))
     fls_im = np.array([os.path.join(f.split('/')[-2], f.split('/')[-1]) for f in fls_im])
-    clss_im = np.array([f.split('/')[-2] for f in fls_im])
+    fls_tr_im, fls_te_im = make_split(fls_im,classes,tr_classes)
+    clss_tr_im = np.array([f.split('/')[-2] for f in fls_tr_im])
+    clss_te_im = np.array([f.split('/')[-2] for f in fls_te_im])
 
     # sketch files and classes
     fls_sk = glob.glob(os.path.join(path_sk, '*', '*.png'))
     fls_sk = np.array([os.path.join(f.split('/')[-2], f.split('/')[-1]) for f in fls_sk])
-    clss_sk = np.array([f.split('/')[-2] for f in fls_sk])
+    fls_tr_sk, fls_te_sk = make_split(fls_sk,classes,tr_classes)
+    clss_tr_sk = np.array([f.split('/')[-2] for f in fls_tr_sk])
+    clss_te_sk = np.array([f.split('/')[-2] for f in fls_te_sk])
 
     
 
-    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train')
+    idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_tr_im, fls_tr_sk, set_type='train')
     #idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid')
-    idx_te_im, idx_te_sk = get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='test')
+    idx_te_im, idx_te_sk = get_coarse_grained_samples(classes, fls_te_im, fls_te_sk, set_type='test')
 
     splits = dict()
 
-    splits['tr_fls_sk'] = fls_sk[idx_tr_sk]
-    splits['va_fls_sk'] = fls_sk[idx_te_sk]
-    splits['te_fls_sk'] = fls_sk[idx_te_sk]
+    splits['tr_fls_sk'] = fls_tr_sk[idx_tr_sk]
+    #splits['va_fls_sk'] = fls_sk[idx_te_sk]
+    splits['te_fls_sk'] = fls_te_sk[idx_te_sk]
 
-    splits['tr_clss_sk'] = clss_sk[idx_tr_sk]
-    splits['va_clss_sk'] = clss_sk[idx_te_sk]
-    splits['te_clss_sk'] = clss_sk[idx_te_sk]
+    splits['tr_clss_sk'] = clss_tr_sk[idx_tr_sk]
+    #splits['va_clss_sk'] = clss_sk[idx_te_sk]
+    splits['te_clss_sk'] = clss_te_sk[idx_te_sk]
 
-    splits['tr_fls_im'] = fls_im[idx_tr_im]
-    splits['va_fls_im'] = fls_im[idx_te_im]
-    splits['te_fls_im'] = fls_im[idx_te_im]
+    splits['tr_fls_im'] = fls_tr_im[idx_tr_im]
+    #splits['va_fls_im'] = fls_im[idx_te_im]
+    splits['te_fls_im'] = fls_te_im[idx_te_im]
 
-    splits['tr_clss_im'] = clss_im[idx_tr_im]
-    splits['va_clss_im'] = clss_im[idx_te_im]
-    splits['te_clss_im'] = clss_im[idx_te_im]
+    splits['tr_clss_im'] = clss_tr_im[idx_tr_im]
+    #splits['va_clss_im'] = clss_im[idx_te_im]
+    splits['te_clss_im'] = clss_te_im[idx_te_im]
 
     return splits
 
