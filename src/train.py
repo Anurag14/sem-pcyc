@@ -105,10 +105,7 @@ def main():
         raise Exception('Wrong dataset.')
 
     # Combine the valid and test set into test set
-    splits['te_fls_sk'] = np.concatenate((splits['va_fls_sk'], splits['te_fls_sk']), axis=0)
-    splits['te_clss_sk'] = np.concatenate((splits['va_clss_sk'], splits['te_clss_sk']), axis=0)
-    splits['te_fls_im'] = np.concatenate((splits['va_fls_im'], splits['te_fls_im']), axis=0)
-    splits['te_clss_im'] = np.concatenate((splits['va_clss_im'], splits['te_clss_im']), axis=0)
+    
 
     if args.gzs_sbir:
         perc = 0.2
@@ -135,10 +132,7 @@ def main():
     data_train = DataGeneratorPaired(args.dataset, root_path, photo_dir, sketch_dir, photo_sd, sketch_sd,
                                      splits['tr_fls_sk'], splits['tr_fls_im'], splits['tr_clss_im'],
                                      transforms_sketch=transform_sketch, transforms_image=transform_image)
-    data_valid_sketch = DataGeneratorSketch(args.dataset, root_path, sketch_dir, sketch_sd, splits['va_fls_sk'],
-                                            splits['va_clss_sk'], transforms=transform_sketch)
-    data_valid_image = DataGeneratorImage(args.dataset, root_path, photo_dir, photo_sd, splits['va_fls_im'],
-                                          splits['va_clss_im'], transforms=transform_image)
+    
     data_test_sketch = DataGeneratorSketch(args.dataset, root_path, sketch_dir, sketch_sd, splits['te_fls_sk'],
                                            splits['te_clss_sk'], transforms=transform_sketch)
     data_test_image = DataGeneratorImage(args.dataset, root_path, photo_dir, photo_sd, splits['te_fls_im'],
@@ -151,12 +145,6 @@ def main():
     # PyTorch train loader
     train_loader = DataLoader(dataset=data_train, batch_size=args.batch_size, sampler=train_sampler,
                               num_workers=args.num_workers, pin_memory=True)
-    # PyTorch valid loader for sketch
-    valid_loader_sketch = DataLoader(dataset=data_valid_sketch, batch_size=args.batch_size, shuffle=False,
-                                     num_workers=args.num_workers, pin_memory=True)
-    # PyTorch valid loader for image
-    valid_loader_image = DataLoader(dataset=data_valid_image, batch_size=args.batch_size, shuffle=False,
-                                    num_workers=args.num_workers, pin_memory=True)
     # PyTorch test loader for sketch
     test_loader_sketch = DataLoader(dataset=data_test_sketch, batch_size=args.batch_size, shuffle=False,
                                      num_workers=args.num_workers, pin_memory=True)
@@ -231,7 +219,7 @@ def main():
 
             # evaluate on validation set, map_ since map is already there
             print('***Validation***')
-            valid_data = validate(valid_loader_sketch, valid_loader_image, sem_pcyc_model, epoch, args)
+            valid_data = validate(test_loader_sketch, test_loader_image, sem_pcyc_model, epoch, args)
             map_ = np.mean(valid_data['aps@all'])
 
             print('mAP@all on validation set after {0} epochs: {1:.4f} (real), {2:.4f} (binary)'
