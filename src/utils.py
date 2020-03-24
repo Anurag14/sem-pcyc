@@ -133,6 +133,12 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
     # paths of sketch and image
     path_im = os.path.join(root_path, photo_dir, photo_sd)
     path_sk = os.path.join(root_path, sketch_dir, sketch_sd)
+    
+    # all the unique classes, training classes 
+    classes = sorted(os.listdir(path_sk))
+    np.random.seed(0)
+    tr_classes = np.random.choice(classes, 100, replace=False)
+    
 
     # all the image and sketch files together with classes and core names
     fls_sk = np.array(['/'.join(f.split('/')[-2:]) for f in glob.glob(os.path.join(path_sk, '*/*.png'))])
@@ -142,47 +148,31 @@ def load_files_sketchy_zeroshot(root_path, split_eccv_2018=False, filter_sketch=
     clss_sk = np.array([f.split('/')[0] for f in fls_sk])
     clss_im = np.array([f.split('/')[0] for f in fls_im])
 
-    # all the unique classes
-    classes = sorted(os.listdir(path_sk))
-
-    # divide the classes
-    if split_eccv_2018:
-        # According to Yelamarthi et al., "A Zero-Shot Framework for Sketch Based Image Retrieval", ECCV 2018.
-        cur_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        with open(os.path.join(cur_path, "test_classes_eccv_2018.txt")) as fp:
-            te_classes = fp.read().splitlines()
-            va_classes = te_classes
-            tr_classes = np.setdiff1d(classes, np.union1d(te_classes, va_classes))
-    else:
-        # According to Shen et al., "Zero-Shot Sketch-Image Hashing", CVPR 2018.
-        np.random.seed(0)
-        tr_classes = np.random.choice(classes, int(0.8 * len(classes)), replace=False)
-        va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.1 * len(classes)), replace=False)
-        te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
+    
 
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train',
                                                       filter_sketch=filter_sketch)
-    idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid',
-                                                      filter_sketch=filter_sketch)
-    idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, set_type='test',
+    #idx_va_im, idx_va_sk = get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='valid',
+    #                                                  filter_sketch=filter_sketch)
+    idx_te_im, idx_te_sk = get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='test',
                                                       filter_sketch=filter_sketch)
 
     splits = dict()
 
     splits['tr_fls_sk'] = fls_sk[idx_tr_sk]
-    splits['va_fls_sk'] = fls_sk[idx_va_sk]
+    splits['va_fls_sk'] = fls_sk[idx_te_sk]
     splits['te_fls_sk'] = fls_sk[idx_te_sk]
 
     splits['tr_clss_sk'] = clss_sk[idx_tr_sk]
-    splits['va_clss_sk'] = clss_sk[idx_va_sk]
+    splits['va_clss_sk'] = clss_sk[idx_te_sk]
     splits['te_clss_sk'] = clss_sk[idx_te_sk]
 
     splits['tr_fls_im'] = fls_im[idx_tr_im]
-    splits['va_fls_im'] = fls_im[idx_va_im]
+    splits['va_fls_im'] = fls_im[idx_te_im]
     splits['te_fls_im'] = fls_im[idx_te_im]
 
     splits['tr_clss_im'] = clss_im[idx_tr_im]
-    splits['va_clss_im'] = clss_im[idx_va_im]
+    splits['va_clss_im'] = clss_im[idx_te_im]
     splits['te_clss_im'] = clss_im[idx_te_im]
 
     return splits
@@ -192,7 +182,12 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
 
     path_im = os.path.join(root_path, photo_dir, photo_sd)
     path_sk = os.path.join(root_path, sketch_dir, sketch_sd)
-
+    
+    # all the unique classes, training classes 
+    classes = sorted(os.listdir(path_sk))
+    np.random.seed(0)
+    tr_classes = np.random.choice(classes, 220, replace=False)
+    
     # image files and classes
     fls_im = glob.glob(os.path.join(path_im, '*', '*.jpg'))
     fls_im = np.array([os.path.join(f.split('/')[-2], f.split('/')[-1]) for f in fls_im])
@@ -203,35 +198,28 @@ def load_files_tuberlin_zeroshot(root_path, photo_dir='images', sketch_dir='sket
     fls_sk = np.array([os.path.join(f.split('/')[-2], f.split('/')[-1]) for f in fls_sk])
     clss_sk = np.array([f.split('/')[-2] for f in fls_sk])
 
-    # all the unique classes
-    classes = np.unique(clss_im)
-
-    # divide the classes, done according to the "Zero-Shot Sketch-Image Hashing" paper
-    np.random.seed(0)
-    tr_classes = np.random.choice(classes, int(0.88 * len(classes)), replace=False)
-    va_classes = np.random.choice(np.setdiff1d(classes, tr_classes), int(0.06 * len(classes)), replace=False)
-    te_classes = np.setdiff1d(classes, np.union1d(tr_classes, va_classes))
+    
 
     idx_tr_im, idx_tr_sk = get_coarse_grained_samples(tr_classes, fls_im, fls_sk, set_type='train')
-    idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid')
-    idx_te_im, idx_te_sk = get_coarse_grained_samples(te_classes, fls_im, fls_sk, set_type='test')
+    #idx_va_im, idx_va_sk = get_coarse_grained_samples(va_classes, fls_im, fls_sk, set_type='valid')
+    idx_te_im, idx_te_sk = get_coarse_grained_samples(classes, fls_im, fls_sk, set_type='test')
 
     splits = dict()
 
     splits['tr_fls_sk'] = fls_sk[idx_tr_sk]
-    splits['va_fls_sk'] = fls_sk[idx_va_sk]
+    splits['va_fls_sk'] = fls_sk[idx_te_sk]
     splits['te_fls_sk'] = fls_sk[idx_te_sk]
 
     splits['tr_clss_sk'] = clss_sk[idx_tr_sk]
-    splits['va_clss_sk'] = clss_sk[idx_va_sk]
+    splits['va_clss_sk'] = clss_sk[idx_te_sk]
     splits['te_clss_sk'] = clss_sk[idx_te_sk]
 
     splits['tr_fls_im'] = fls_im[idx_tr_im]
-    splits['va_fls_im'] = fls_im[idx_va_im]
+    splits['va_fls_im'] = fls_im[idx_te_im]
     splits['te_fls_im'] = fls_im[idx_te_im]
 
     splits['tr_clss_im'] = clss_im[idx_tr_im]
-    splits['va_clss_im'] = clss_im[idx_va_im]
+    splits['va_clss_im'] = clss_im[idx_te_im]
     splits['te_clss_im'] = clss_im[idx_te_im]
 
     return splits
